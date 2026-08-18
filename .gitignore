@@ -1,0 +1,20 @@
+# .NET
+**/bin/
+**/obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# User secrets / local config
+**/appsettings.Development.json
+**/appsettings.json
+
+# Logs
+*.log
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
