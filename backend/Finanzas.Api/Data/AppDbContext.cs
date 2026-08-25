@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     public DbSet<Gasto> Gastos => Set<Gasto>();
     public DbSet<Devolucion> Devoluciones => Set<Devolucion>();
 
+    public DbSet<ReglaReparto> ReglasReparto => Set<ReglaReparto>();
+    public DbSet<DistribucionGasto> DistribucionesGasto => Set<DistribucionGasto>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -68,10 +71,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Ingreso>()
             .Property(x => x.Valor)
             .HasPrecision(12, 2);
-
-        modelBuilder.Entity<Ingreso>()
-            .Property(x => x.PorcentajeAporte)
-            .HasPrecision(5, 2);
 
         modelBuilder.Entity<GastoFijo>()
             .Property(x => x.ValorEstimado)
@@ -124,5 +123,57 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(x => x.RecibeCuentaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ReglaReparto>()
+            .Property(x => x.Porcentaje)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<DistribucionGasto>()
+            .Property(x => x.Porcentaje)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<DistribucionGasto>()
+            .Property(x => x.Valor)
+            .HasPrecision(12, 2);
+
+        modelBuilder.Entity<ReglaReparto>()
+            .HasIndex(x => new
+            {
+                x.EspacioFinancieroId,
+                x.UsuarioId
+            })
+            .IsUnique();
+
+        modelBuilder.Entity<ReglaReparto>()
+            .HasOne(x => x.EspacioFinanciero)
+            .WithMany()
+            .HasForeignKey(x => x.EspacioFinancieroId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ReglaReparto>()
+            .HasOne(x => x.Usuario)
+            .WithMany()
+            .HasForeignKey(x => x.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DistribucionGasto>()
+            .HasOne(x => x.Usuario)
+            .WithMany()
+            .HasForeignKey(x => x.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        
+        modelBuilder.Entity<DistribucionGasto>()
+            .HasIndex(x => new
+            {
+                x.GastoId,
+                x.UsuarioId
+            })
+            .IsUnique();
+
+        modelBuilder.Entity<DistribucionGasto>()
+            .HasOne(x => x.Gasto)
+            .WithMany(x => x.Distribuciones)
+            .HasForeignKey(x => x.GastoId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

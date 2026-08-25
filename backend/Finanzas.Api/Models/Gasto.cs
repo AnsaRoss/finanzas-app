@@ -34,17 +34,40 @@ public class Gasto
     [Column(TypeName = "decimal(12,2)")]
     public decimal Valor { get; set; }
 
-    public DateOnly Fecha { get; set; }
+    public DateOnly Fecha { get; set; } //fecha del gasto / mes / vencimiento generado.
+
+    public DateOnly? FechaPago { get; set; } //cuándo realmente se pagó.
 
     public string? Observacion { get; set; }
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
-
+    
     public ICollection<Devolucion> Devoluciones { get; set; } = [];
+
+    public ICollection<DistribucionGasto> Distribuciones { get; set; } = [];
+    
+    public EstadoGasto Estado { get; set; } = EstadoGasto.Pendiente;
+
+    public TipoRepartoGasto TipoReparto { get; set; } = TipoRepartoGasto.ReglaHogar;
+
 }
 
 public enum TipoGasto
 {
     Fijo = 1,
     Variable = 2
+}
+
+public enum EstadoGasto
+{
+    Pendiente = 1,
+    Pagado = 2,
+    Anulado = 3
+}
+
+public enum TipoRepartoGasto
+{
+    ReglaHogar = 1,
+    Individual = 2,
+    Personalizado = 3
 }

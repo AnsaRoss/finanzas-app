@@ -73,6 +73,22 @@ finanzas-app/
 |     1 | Fijo        |
 |     2 | Variable    |
 
+## EstadoGasto
+
+| Valor | Descripción |
+| ----: | ----------- |
+|     1 | Pendiente   |
+|     2 | Pagado      |
+|     3 | Anulado     |
+
+## TipoRepartoGasto
+
+| Valor | Descripción     |
+| ----: | --------------- |
+|     1 | Regla del hogar |
+|     2 | Individual      |
+|     3 | Personalizado   |
+
 ## EstadoDevolucion
 
 | Valor | Descripción |
@@ -80,6 +96,13 @@ finanzas-app/
 |     1 | Pendiente   |
 |     2 | Parcial     |
 |     3 | Pagada      |
+
+## EstadoIngreso
+
+| Valor | Descripción |
+| ----: | ----------- |
+|     1 | Activo      |
+|     2 | Anulado     |
 
 ---
 
@@ -105,6 +128,8 @@ Andres
 └── Hogar
 ```
 
+---
+
 ## Categorías
 
 Las categorías pertenecen a un espacio financiero y pueden ser de:
@@ -125,9 +150,11 @@ Gasto
 └── Servicios básicos
 ```
 
+---
+
 ## Cuentas
 
-Las cuentas también pertenecen a un espacio financiero.
+Las cuentas pertenecen a un espacio financiero.
 
 Ejemplos:
 
@@ -147,11 +174,63 @@ Una cuenta puede tener un propietario dentro del espacio financiero.
 
 ---
 
+# Reparto de gastos
+
+Los gastos de un hogar pueden distribuirse de tres formas.
+
+### Regla del hogar
+
+Utiliza la regla general configurada para los miembros.
+
+Ejemplo:
+
+```text
+Sandra → 30%
+Andres → 70%
+```
+
+Un gasto de $300 genera:
+
+```text
+Sandra → $90
+Andres → $210
+```
+
+### Individual
+
+El gasto corresponde completamente a una sola persona.
+
+Ejemplo:
+
+```text
+Garage = $50
+Responsable: Andres
+
+Andres → 100% = $50
+```
+
+### Personalizado
+
+Permite indicar porcentajes específicos para un gasto.
+
+Ejemplo:
+
+```text
+Compra especial = $100
+
+Sandra → 20% = $20
+Andres → 80% = $80
+```
+
+La distribución aplicada se guarda históricamente en `DistribucionGasto`.
+
+Si posteriormente cambia la regla general del hogar, los gastos anteriores conservan el reparto con el que fueron creados.
+
+---
+
 # Autenticación
 
 La API utiliza JWT Bearer.
-
-Endpoints:
 
 ```text
 POST /api/Auth/register
@@ -228,21 +307,298 @@ Para efectivo no es necesario especificar una entidad financiera.
 
 ---
 
-# Modelo financiero previsto
+# Reglas de reparto
 
-La aplicación manejará:
+Permiten configurar el porcentaje general de participación de los miembros de un hogar.
+
+```text
+GET /api/ReglasReparto/espacio/{espacioId}
+PUT /api/ReglasReparto/espacio/{espacioId}
+```
+
+Ejemplo:
+
+```json
+{
+  "distribuciones": [
+    {
+      "usuarioId": 1,
+      "porcentaje": 30
+    },
+    {
+      "usuarioId": 2,
+      "porcentaje": 70
+    }
+  ]
+}
+```
+
+Los porcentajes deben sumar exactamente `100%`.
+
+---
+
+# Ingresos
+
+```text
+GET   /api/Ingresos/espacio/{espacioId}
+POST  /api/Ingresos
+PUT   /api/Ingresos/{id}
+PATCH /api/Ingresos/{id}/anular
+```
+
+Los ingresos pueden asociarse a:
+
+* Usuario.
+* Categoría.
+* Cuenta.
+* Fecha.
+* Observación.
+
+Los ingresos anulados se mantienen como histórico, pero no deben contabilizarse en los totales mensuales.
+
+---
+
+# Gastos fijos
+
+Un gasto fijo funciona como una plantilla recurrente.
+
+Ejemplos:
+
+* Arriendo.
+* Internet.
+* Garage.
+* Servicios básicos.
+
+Endpoints:
+
+```text
+GET   /api/GastosFijos/espacio/{espacioId}
+POST  /api/GastosFijos
+PUT   /api/GastosFijos/{id}
+PATCH /api/GastosFijos/{id}/estado
+POST  /api/GastosFijos/{id}/generar
+```
+
+Generar un gasto fijo crea una ocurrencia mensual en estado **Pendiente**.
+
+La distribución del gasto se copia en ese momento para conservar el histórico.
+
+No se permite generar dos veces el mismo gasto fijo para el mismo mes.
+
+---
+
+# Gastos
+
+Los gastos pueden ser:
+
+* Fijos.
+* Variables.
+* Pendientes.
+* Pagados.
+* Anulados.
+
+Endpoints principales:
+
+```text
+GET   /api/Gastos/espacio/{espacioId}
+POST  /api/Gastos/variable
+PATCH /api/Gastos/{id}/pagar
+PATCH /api/Gastos/{id}/anular
+```
+
+La consulta de gastos permite filtros opcionales:
+
+```text
+anio
+mes
+estado
+tipo
+```
+
+Ejemplo:
+
+```text
+GET /api/Gastos/espacio/2?anio=2026&mes=8&estado=2&tipo=2
+```
+
+---
+
+# Pago de gastos
+
+Un gasto generado puede permanecer pendiente hasta que se registre su pago.
+
+Al pagar se registra:
+
+* Persona que pagó.
+* Cuenta opcional.
+* Fecha de pago.
+* Estado Pagado.
+
+Ejemplo:
+
+```text
+PATCH /api/Gastos/{id}/pagar
+```
+
+```json
+{
+  "pagadoPorId": 1,
+  "cuentaId": null,
+  "fechaPago": "2026-08-24"
+}
+```
+
+El pago y la generación de devoluciones se ejecutan de forma transaccional.
+
+---
+
+# Devoluciones
+
+Cuando una persona paga más de lo que le corresponde según la distribución del gasto, se generan devoluciones automáticamente.
+
+Ejemplo:
+
+```text
+Supermercado = $100
+
+Sandra debe asumir 30% = $30
+Andres debe asumir 70% = $70
+
+Sandra paga los $100
+
+→ Andres debe devolver $70 a Sandra
+```
+
+Endpoints:
+
+```text
+GET   /api/Devoluciones/espacio/{espacioId}
+PATCH /api/Devoluciones/{id}/pagar
+```
+
+Las devoluciones admiten pagos parciales.
+
+Ejemplo:
+
+```text
+Deuda:      $210
+Pago:       $100
+Pendiente:  $110
+Estado:     Parcial
+```
+
+Después de completar el saldo:
+
+```text
+Pendiente: $0
+Estado: Pagada
+```
+
+---
+
+# Reportería
+
+## Resumen mensual
+
+```text
+GET /api/Reportes/resumen
+```
+
+Parámetros:
+
+```text
+espacioId
+anio
+mes
+```
+
+Incluye:
+
+* Total de ingresos.
+* Total de gastos.
+* Saldo.
+* Gastos pagados.
+* Gastos pendientes.
+* Gastos fijos.
+* Gastos variables.
+* Devoluciones pendientes.
+
+Los gastos anulados y los ingresos anulados no deben afectar los totales.
+
+---
+
+## Libro diario
+
+```text
+GET /api/Reportes/libro-diario
+```
+
+Agrupa cronológicamente:
 
 * Ingresos.
 * Gastos fijos.
 * Gastos variables.
-* Cuentas y tarjetas.
-* Devoluciones entre personas.
-* Devoluciones hacia cuentas/tarjetas.
-* Porcentaje de aporte sobre ingresos.
-* Libro diario.
-* Reportería mensual.
-* Finanzas personales.
-* Finanzas compartidas por hogar.
+
+Los movimientos anulados pueden permanecer visibles para mantener trazabilidad, pero no afectan los totales.
+
+Ejemplo:
+
+```text
+24/08 | Sueldo mensual | INGRESO        | +1200
+24/08 | Arriendo casa  | GASTO_FIJO     | -300
+24/08 | Supermercado   | GASTO_VARIABLE | -100
+```
+
+---
+
+## Reporte de devoluciones
+
+```text
+GET /api/Reportes/devoluciones
+```
+
+Permite consultar resumen y detalle de las devoluciones.
+
+Ejemplo:
+
+```text
+Andres debe a Sandra: $150
+```
+
+Detalle:
+
+```text
+Supermercado     $70
+Compra especial  $80
+```
+
+Las devoluciones ya pagadas permanecen en el detalle histórico, pero no suman al pendiente.
+
+---
+
+# Detección de conceptos similares
+
+La API incluye búsqueda de conceptos similares para evitar registros duplicados con nombres diferentes.
+
+Ejemplo:
+
+```text
+Pierna de chancho
+Chancho pierna
+```
+
+Endpoint:
+
+```text
+POST /api/Conceptos/similares
+```
+
+La comparación normaliza:
+
+* Mayúsculas/minúsculas.
+* Tildes.
+* Signos.
+* Orden y coincidencia de palabras.
 
 ---
 
@@ -268,6 +624,12 @@ Aplicarla:
 dotnet ef database update
 ```
 
+Consultar migraciones:
+
+```bash
+dotnet ef migrations list
+```
+
 ---
 
 # Configuración local
@@ -289,29 +651,53 @@ dotnet user-secrets set "Jwt:Audience" "Finanzas.Mobile"
 
 # Estado actual
 
-Implementado:
+## Implementado
 
 * [x] Proyecto ASP.NET Core Web API
 * [x] MySQL + Entity Framework Core
 * [x] Migraciones
 * [x] Registro de usuarios
 * [x] Login con JWT
+* [x] Swagger con JWT
 * [x] Espacio personal automático
 * [x] Creación de hogares
-* [x] Miembros de hogares
+* [x] Miembros y roles
 * [x] Categorías
 * [x] Entidades financieras
 * [x] Cuentas
-* [x] Swagger con JWT
+* [x] Ingresos
+* [x] Gastos fijos
+* [x] Gastos variables
+* [x] Estado pendiente / pagado / anulado
+* [x] Reglas generales de reparto
+* [x] Reparto individual
+* [x] Reparto personalizado
+* [x] Distribución histórica de gastos
+* [x] Pago de gastos
+* [x] Devoluciones automáticas
+* [x] Pagos parciales de devoluciones
+* [x] Anulación de gastos
+* [x] Filtros por año, mes, estado y tipo
+* [x] Resumen mensual
+* [x] Libro diario
+* [x] Reporte de devoluciones
+* [x] Servicio centralizado para lógica de gastos/reparto
+* [x] Operaciones críticas transaccionales
+* [x] Detección de conceptos similares
 
-Pendiente:
+## Pendiente de validación
 
-* [ ] Ingresos
-* [ ] Gastos fijos
-* [ ] Gastos variables
-* [ ] Devoluciones
-* [ ] Reportería
-* [ ] Libro diario
-* [ ] Dashboard
-* [ ] Detección de conceptos similares
+* [ ] Probar edición de ingresos
+* [ ] Probar anulación de ingresos
+* [ ] Confirmar que ingresos anulados no afecten el resumen mensual
+* [ ] Probar detección de conceptos similares
+* [ ] Ejecutar regresión general de endpoints
+* [ ] Confirmar `dotnet build` sin errores ni warnings
+
+## Pendiente de desarrollo
+
+* [ ] Dashboard móvil
 * [ ] Aplicación Flutter
+* [ ] Integración Flutter ↔ API
+* [ ] Mejoras visuales y experiencia de usuario
+* [ ] Pruebas finales del flujo completo

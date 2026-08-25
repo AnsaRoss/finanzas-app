@@ -27,6 +27,8 @@ builder.Services.AddControllers();
 
 // Servicios
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<GastoService>();
+builder.Services.AddScoped<ConceptoService>();
 
 // JWT
 var jwtKey = builder.Configuration["Jwt:Key"]

@@ -30,12 +30,17 @@ public class Ingreso
     [Column(TypeName = "decimal(12,2)")]
     public decimal Valor { get; set; }
 
-    [Column(TypeName = "decimal(5,2)")]
-    public decimal PorcentajeAporte { get; set; }
-
     public DateOnly Fecha { get; set; }
 
     public string? Observacion { get; set; }
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+
+    public EstadoIngreso Estado { get; set; } = EstadoIngreso.Activo;
+}
+
+public enum EstadoIngreso
+{
+    Activo = 1,
+    Anulado = 2
 }

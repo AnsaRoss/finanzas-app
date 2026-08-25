@@ -4,6 +4,7 @@ using Finanzas.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finanzas.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824200655_RemoveIncomeContributionPercentage")]
+    partial class RemoveIncomeContributionPercentage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -144,38 +147,6 @@ namespace Finanzas.Api.Migrations
                     b.ToTable("Devoluciones");
                 });
 
-            modelBuilder.Entity("Finanzas.Api.Models.DistribucionGasto", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("GastoId")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal>("Porcentaje")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<long>("UsuarioId")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal>("Valor")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("decimal(12,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.HasIndex("GastoId", "UsuarioId")
-                        .IsUnique();
-
-                    b.ToTable("DistribucionesGasto");
-                });
-
             modelBuilder.Entity("Finanzas.Api.Models.EntidadFinanciera", b =>
                 {
                     b.Property<long>("Id")
@@ -278,17 +249,11 @@ namespace Finanzas.Api.Migrations
                     b.Property<long>("EspacioFinancieroId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Estado")
-                        .HasColumnType("int");
-
                     b.Property<DateOnly>("Fecha")
                         .HasColumnType("date");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<DateOnly?>("FechaPago")
-                        .HasColumnType("date");
 
                     b.Property<long?>("GastoFijoId")
                         .HasColumnType("bigint");
@@ -303,9 +268,6 @@ namespace Finanzas.Api.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TipoReparto")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Valor")
@@ -392,9 +354,6 @@ namespace Finanzas.Api.Migrations
                     b.Property<long>("EspacioFinancieroId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Estado")
-                        .HasColumnType("int");
-
                     b.Property<DateOnly>("Fecha")
                         .HasColumnType("date");
 
@@ -422,37 +381,6 @@ namespace Finanzas.Api.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Ingresos");
-                });
-
-            modelBuilder.Entity("Finanzas.Api.Models.ReglaReparto", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<long>("EspacioFinancieroId")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal>("Porcentaje")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<long>("UsuarioId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.HasIndex("EspacioFinancieroId", "UsuarioId")
-                        .IsUnique();
-
-                    b.ToTable("ReglasReparto");
                 });
 
             modelBuilder.Entity("Finanzas.Api.Models.Usuario", b =>
@@ -556,25 +484,6 @@ namespace Finanzas.Api.Migrations
                     b.Navigation("RecibeCuenta");
 
                     b.Navigation("RecibeUsuario");
-                });
-
-            modelBuilder.Entity("Finanzas.Api.Models.DistribucionGasto", b =>
-                {
-                    b.HasOne("Finanzas.Api.Models.Gasto", "Gasto")
-                        .WithMany("Distribuciones")
-                        .HasForeignKey("GastoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Finanzas.Api.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Gasto");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Finanzas.Api.Models.EspacioFinanciero", b =>
@@ -699,25 +608,6 @@ namespace Finanzas.Api.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("Finanzas.Api.Models.ReglaReparto", b =>
-                {
-                    b.HasOne("Finanzas.Api.Models.EspacioFinanciero", "EspacioFinanciero")
-                        .WithMany()
-                        .HasForeignKey("EspacioFinancieroId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Finanzas.Api.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("EspacioFinanciero");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("Finanzas.Api.Models.EspacioFinanciero", b =>
                 {
                     b.Navigation("Usuarios");
@@ -726,8 +616,6 @@ namespace Finanzas.Api.Migrations
             modelBuilder.Entity("Finanzas.Api.Models.Gasto", b =>
                 {
                     b.Navigation("Devoluciones");
-
-                    b.Navigation("Distribuciones");
                 });
 
             modelBuilder.Entity("Finanzas.Api.Models.Usuario", b =>
