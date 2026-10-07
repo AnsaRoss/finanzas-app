@@ -41,6 +41,16 @@ class IngresosCatalogosService {
         .toList();
   }
 
+  Future<List<CategoriaIngreso>> listarCategoriasGasto(int espacioId) async {
+    final response = await _get('/api/Categorias/espacio/$espacioId');
+    final json = jsonDecode(response.body) as List<dynamic>;
+
+    return json
+        .map((item) => CategoriaIngreso.fromJson(item as Map<String, dynamic>))
+        .where((categoria) => categoria.tipo == 2)
+        .toList();
+  }
+
   Future<List<CuentaIngreso>> listarCuentas(int espacioId) async {
     final response = await _get('/api/Cuentas/espacio/$espacioId');
     final json = jsonDecode(response.body) as List<dynamic>;
