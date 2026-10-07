@@ -3,6 +3,7 @@ import 'package:finanzas_mobile/features/devoluciones/screens/devoluciones_scree
 import 'package:finanzas_mobile/features/gastos_fijos/screens/gastos_fijos_screen.dart';
 import 'package:finanzas_mobile/features/gastos/screens/gastos_variables_screen.dart';
 import 'package:finanzas_mobile/features/ingresos/screens/ingresos_screen.dart';
+import 'package:finanzas_mobile/features/reportes/screens/movimientos_screen.dart';
 import 'package:finanzas_mobile/features/reportes/models/resumen_financiero.dart';
 import 'package:finanzas_mobile/features/reportes/services/reportes_service.dart';
 import 'package:flutter/material.dart';
@@ -126,6 +127,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (shouldRefresh == true && mounted) {
       _retry();
     }
+  }
+
+  Future<void> _openMovimientos() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => MovimientosScreen(espacio: widget.espacio),
+      ),
+    );
   }
 
   String _monthName(int month) {
@@ -282,7 +291,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _QuickActionButton(
                         label: 'Ver movimientos',
                         icon: Icons.receipt_long_outlined,
-                        onPressed: null,
+                        onPressed: _openMovimientos,
                       ),
                     ],
                   ),
