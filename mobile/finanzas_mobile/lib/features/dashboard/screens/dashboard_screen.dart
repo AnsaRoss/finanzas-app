@@ -1,4 +1,5 @@
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
+import 'package:finanzas_mobile/features/devoluciones/screens/devoluciones_screen.dart';
 import 'package:finanzas_mobile/features/gastos_fijos/screens/gastos_fijos_screen.dart';
 import 'package:finanzas_mobile/features/gastos/screens/gastos_variables_screen.dart';
 import 'package:finanzas_mobile/features/ingresos/screens/ingresos_screen.dart';
@@ -107,6 +108,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final shouldRefresh = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => GastosFijosScreen(espacio: widget.espacio),
+      ),
+    );
+
+    if (shouldRefresh == true && mounted) {
+      _retry();
+    }
+  }
+
+  Future<void> _openDevoluciones() async {
+    final shouldRefresh = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => DevolucionesScreen(espacio: widget.espacio),
       ),
     );
 
@@ -260,6 +273,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: 'Gastos fijos',
                         icon: Icons.event_repeat_outlined,
                         onPressed: _openGastosFijos,
+                      ),
+                      _QuickActionButton(
+                        label: 'Devoluciones',
+                        icon: Icons.swap_horiz_outlined,
+                        onPressed: _openDevoluciones,
                       ),
                       _QuickActionButton(
                         label: 'Ver movimientos',
