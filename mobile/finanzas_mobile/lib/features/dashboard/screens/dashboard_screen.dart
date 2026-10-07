@@ -1,4 +1,5 @@
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
+import 'package:finanzas_mobile/features/ingresos/screens/ingresos_screen.dart';
 import 'package:finanzas_mobile/features/reportes/models/resumen_financiero.dart';
 import 'package:finanzas_mobile/features/reportes/services/reportes_service.dart';
 import 'package:flutter/material.dart';
@@ -69,6 +70,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _formatMoney(double value) => '\$${value.toStringAsFixed(2)}';
+
+  Future<void> _openIngresos({bool openCreateOnStart = false}) async {
+    final shouldRefresh = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => IngresosScreen(
+          espacio: widget.espacio,
+          openCreateOnStart: openCreateOnStart,
+        ),
+      ),
+    );
+
+    if (shouldRefresh == true && mounted) {
+      _retry();
+    }
+  }
 
   String _monthName(int month) {
     const months = [
@@ -196,18 +212,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
-                    children: const [
+                    children: [
                       _QuickActionButton(
                         label: 'Registrar ingreso',
                         icon: Icons.add_circle_outline,
+                        onPressed: () {
+                          _openIngresos(openCreateOnStart: true);
+                        },
                       ),
                       _QuickActionButton(
                         label: 'Registrar gasto',
                         icon: Icons.remove_circle_outline,
+                        onPressed: null,
                       ),
                       _QuickActionButton(
                         label: 'Ver movimientos',
                         icon: Icons.receipt_long_outlined,
+                        onPressed: null,
                       ),
                     ],
                   ),
@@ -350,15 +371,17 @@ class _QuickActionButton extends StatelessWidget {
   const _QuickActionButton({
     required this.label,
     required this.icon,
+    required this.onPressed,
   });
 
   final String label;
   final IconData icon;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: null,
+      onPressed: onPressed,
       icon: Icon(icon),
       label: Text(label),
     );

@@ -49,7 +49,8 @@ public class IngresosController : ControllerBase
         }
 
         var ingresos = await _context.Ingresos
-            .Where(x => x.EspacioFinancieroId == espacioId)
+            .Where(x => x.EspacioFinancieroId == espacioId &&
+                        x.Estado == EstadoIngreso.Activo)
             .OrderByDescending(x => x.Fecha)
             .ThenByDescending(x => x.Id)
             .Select(x => new
