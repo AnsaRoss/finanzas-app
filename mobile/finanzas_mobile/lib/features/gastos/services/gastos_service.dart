@@ -31,7 +31,6 @@ class GastosService {
 
     try {
       final queryParameters = <String, String>{
-        'tipo': '2',
         if (anio != null) 'anio': anio.toString(),
         if (mes != null) 'mes': mes.toString(),
         if (estado != null) 'estado': estado.toString(),

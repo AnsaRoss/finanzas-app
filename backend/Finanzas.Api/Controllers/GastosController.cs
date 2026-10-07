@@ -205,6 +205,7 @@ public class GastosController : ControllerBase
                 x.Id,
                 x.Concepto,
                 x.Tipo,
+                x.GastoFijoId,
                 x.Valor,
                 x.Fecha,
                 x.FechaPago,

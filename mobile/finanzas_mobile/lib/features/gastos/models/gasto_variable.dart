@@ -3,6 +3,7 @@ class GastoVariable {
     required this.id,
     required this.concepto,
     required this.tipo,
+    required this.gastoFijoId,
     required this.valor,
     required this.fecha,
     required this.fechaPago,
@@ -20,6 +21,7 @@ class GastoVariable {
   final int id;
   final String concepto;
   final int tipo;
+  final int? gastoFijoId;
   final double valor;
   final DateTime fecha;
   final DateTime? fechaPago;
@@ -42,6 +44,14 @@ class GastoVariable {
     };
   }
 
+  String get tipoLabel {
+    return switch (tipo) {
+      1 => 'Fijo',
+      2 => 'Variable',
+      _ => 'Sin tipo',
+    };
+  }
+
   bool get estaPendiente => estado == 1;
   bool get estaAnulado => estado == 3;
 
@@ -50,6 +60,7 @@ class GastoVariable {
       id: (json['id'] as num).toInt(),
       concepto: json['concepto'] as String,
       tipo: (json['tipo'] as num).toInt(),
+      gastoFijoId: (json['gastoFijoId'] as num?)?.toInt(),
       valor: (json['valor'] as num).toDouble(),
       fecha: DateTime.parse(json['fecha'] as String),
       fechaPago: json['fechaPago'] == null

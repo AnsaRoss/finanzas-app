@@ -211,7 +211,7 @@ class _GastosVariablesScreenState extends State<GastosVariablesScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Gastos variables'),
+          title: const Text('Gastos'),
           leading: BackButton(
             onPressed: () {
               Navigator.of(context).pop(_shouldRefreshDashboard);
@@ -234,7 +234,7 @@ class _GastosVariablesScreenState extends State<GastosVariablesScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Gastos variables registrados en este espacio.',
+                      'Gastos registrados en este espacio.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -268,7 +268,7 @@ class _GastosVariablesScreenState extends State<GastosVariablesScreen> {
                         final gastos = snapshot.data ?? [];
                         if (gastos.isEmpty) {
                           return Text(
-                            'Aún no hay gastos variables registrados.',
+                            'Aún no hay gastos registrados.',
                             style: TextStyle(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -309,6 +309,7 @@ class _GastosVariablesScreenState extends State<GastosVariablesScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         Text('Fecha: ${_formatDate(gasto.fecha)}'),
+                                        Text('Tipo: ${gasto.tipoLabel}'),
                                         Text('Estado: ${gasto.estadoLabel}'),
                                         Text('Categoría: ${gasto.categoria}'),
                                         if (gasto.pagadoPor != null)
