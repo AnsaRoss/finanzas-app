@@ -1,3 +1,4 @@
+import 'package:finanzas_mobile/features/categorias/screens/categorias_screen.dart';
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
 import 'package:finanzas_mobile/features/devoluciones/screens/devoluciones_screen.dart';
 import 'package:finanzas_mobile/features/cuentas/screens/cuentas_screen.dart';
@@ -7,6 +8,7 @@ import 'package:finanzas_mobile/features/ingresos/screens/ingresos_screen.dart';
 import 'package:finanzas_mobile/features/reportes/screens/movimientos_screen.dart';
 import 'package:finanzas_mobile/features/reportes/models/resumen_financiero.dart';
 import 'package:finanzas_mobile/features/reportes/services/reportes_service.dart';
+import 'package:finanzas_mobile/features/reglas_reparto/screens/reglas_reparto_screen.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -142,6 +144,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => CuentasScreen(espacio: widget.espacio),
+      ),
+    );
+  }
+
+  Future<void> _openCategorias() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => CategoriasScreen(espacio: widget.espacio),
+      ),
+    );
+  }
+
+  Future<void> _openReglasReparto() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => ReglasRepartoScreen(espacio: widget.espacio),
       ),
     );
   }
@@ -301,6 +319,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: 'Cuentas',
                         icon: Icons.account_balance_outlined,
                         onPressed: _openCuentas,
+                      ),
+                      _QuickActionButton(
+                        label: 'Categorías',
+                        icon: Icons.category_outlined,
+                        onPressed: _openCategorias,
+                      ),
+                      _QuickActionButton(
+                        label: 'Reglas de reparto',
+                        icon: Icons.percent_outlined,
+                        onPressed: _openReglasReparto,
                       ),
                       _QuickActionButton(
                         label: 'Ver movimientos',
