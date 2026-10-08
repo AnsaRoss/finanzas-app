@@ -302,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: 'Registrar gasto',
                         icon: Icons.remove_circle_outline,
                         onPressed: () {
-                          _openGastos(openCreateOnStart: true);
+                          _openGastos();
                         },
                       ),
                       _QuickActionButton(
