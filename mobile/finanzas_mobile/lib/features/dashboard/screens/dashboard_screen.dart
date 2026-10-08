@@ -1,5 +1,6 @@
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
 import 'package:finanzas_mobile/features/devoluciones/screens/devoluciones_screen.dart';
+import 'package:finanzas_mobile/features/cuentas/screens/cuentas_screen.dart';
 import 'package:finanzas_mobile/features/gastos_fijos/screens/gastos_fijos_screen.dart';
 import 'package:finanzas_mobile/features/gastos/screens/gastos_variables_screen.dart';
 import 'package:finanzas_mobile/features/ingresos/screens/ingresos_screen.dart';
@@ -133,6 +134,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => MovimientosScreen(espacio: widget.espacio),
+      ),
+    );
+  }
+
+  Future<void> _openCuentas() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => CuentasScreen(espacio: widget.espacio),
       ),
     );
   }
@@ -287,6 +296,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: 'Devoluciones',
                         icon: Icons.swap_horiz_outlined,
                         onPressed: _openDevoluciones,
+                      ),
+                      _QuickActionButton(
+                        label: 'Cuentas',
+                        icon: Icons.account_balance_outlined,
+                        onPressed: _openCuentas,
                       ),
                       _QuickActionButton(
                         label: 'Ver movimientos',
