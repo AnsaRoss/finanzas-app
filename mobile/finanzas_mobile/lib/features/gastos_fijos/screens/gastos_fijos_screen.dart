@@ -1,4 +1,6 @@
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
+import 'package:finanzas_mobile/features/espacios/models/miembro_espacio.dart';
+import 'package:finanzas_mobile/features/espacios/services/espacios_service.dart';
 import 'package:finanzas_mobile/features/gastos/services/gastos_service.dart';
 import 'package:finanzas_mobile/features/gastos_fijos/models/gasto_fijo.dart';
 import 'package:finanzas_mobile/features/gastos_fijos/services/gastos_fijos_service.dart';
@@ -83,6 +85,9 @@ class _GastosFijosScreenState extends State<GastosFijosScreen> {
               concepto: values.concepto,
               valorEstimado: values.valorEstimado,
               diaVencimiento: values.diaVencimiento,
+              tipoReparto: values.tipoReparto,
+              responsableId: values.responsableId,
+              distribucion: values.distribucion,
             );
           },
           onSuccess: () {
@@ -110,6 +115,9 @@ class _GastosFijosScreenState extends State<GastosFijosScreen> {
               concepto: values.concepto,
               valorEstimado: values.valorEstimado,
               diaVencimiento: values.diaVencimiento,
+              tipoReparto: values.tipoReparto,
+              responsableId: values.responsableId,
+              distribucion: values.distribucion,
             );
           },
           onSuccess: () {
@@ -310,6 +318,13 @@ class _GastosFijosScreenState extends State<GastosFijosScreen> {
                                           Text(
                                             'Estado: ${gastoFijo.estadoLabel}',
                                           ),
+                                          Text(
+                                            'Reparto: ${gastoFijo.tipoRepartoLabel}',
+                                          ),
+                                          if (gastoFijo.responsable != null)
+                                            Text(
+                                              'Responsable: ${gastoFijo.responsable}',
+                                            ),
                                           if (estaGenerado)
                                             const Text('Generado ✓'),
                                           const SizedBox(height: 12),
@@ -406,12 +421,28 @@ class _GastoFijoFormValues {
     required this.concepto,
     required this.valorEstimado,
     required this.diaVencimiento,
+    required this.tipoReparto,
+    required this.responsableId,
+    required this.distribucion,
   });
 
   final int categoriaId;
   final String concepto;
   final double valorEstimado;
   final int diaVencimiento;
+  final int tipoReparto;
+  final int? responsableId;
+  final List<Map<String, Object>> distribucion;
+}
+
+class _GastoFijoCatalogos {
+  const _GastoFijoCatalogos({
+    required this.categorias,
+    required this.miembros,
+  });
+
+  final List<CategoriaIngreso> categorias;
+  final List<MiembroEspacio> miembros;
 }
 
 class _GenerarGastoFijoValues {
@@ -447,12 +478,16 @@ class _GastoFijoFormDialog extends StatefulWidget {
 
 class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
   final _catalogosService = const IngresosCatalogosService();
+  final _espaciosService = const EspaciosService();
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _conceptoController;
   late final TextEditingController _valorEstimadoController;
   late final TextEditingController _diaVencimientoController;
-  late Future<List<CategoriaIngreso>> _categoriasFuture;
+  late Future<_GastoFijoCatalogos> _catalogosFuture;
+  final Map<int, TextEditingController> _porcentajeControllers = {};
   int? _selectedCategoriaId;
+  int _selectedTipoReparto = 1;
+  int? _selectedResponsableId;
   bool _isSaving = false;
 
   @override
@@ -461,6 +496,8 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
     final gastoFijo = widget.gastoFijo;
 
     _selectedCategoriaId = gastoFijo?.categoriaId;
+    _selectedTipoReparto = gastoFijo?.tipoReparto ?? 1;
+    _selectedResponsableId = gastoFijo?.responsableId;
     _conceptoController = TextEditingController(
       text: gastoFijo?.concepto ?? '',
     );
@@ -470,7 +507,12 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
     _diaVencimientoController = TextEditingController(
       text: gastoFijo?.diaVencimiento.toString() ?? '',
     );
-    _categoriasFuture = _loadCategorias();
+    for (final item in gastoFijo?.distribucion ?? <DistribucionGastoFijo>[]) {
+      _porcentajeControllers[item.usuarioId] = TextEditingController(
+        text: _formatPercentage(item.porcentaje),
+      );
+    }
+    _catalogosFuture = _loadCatalogos();
   }
 
   @override
@@ -478,22 +520,45 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
     _conceptoController.dispose();
     _valorEstimadoController.dispose();
     _diaVencimientoController.dispose();
+    for (final controller in _porcentajeControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  Future<List<CategoriaIngreso>> _loadCategorias() {
-    return _catalogosService.listarCategoriasGasto(widget.espacio.id);
+  Future<_GastoFijoCatalogos> _loadCatalogos() async {
+    final categorias = await _catalogosService.listarCategoriasGasto(
+      widget.espacio.id,
+    );
+    final miembros = await _espaciosService.listarMiembros(widget.espacio.id);
+
+    for (final miembro in miembros) {
+      _porcentajeControllers.putIfAbsent(
+        miembro.usuarioId,
+        () => TextEditingController(text: '0'),
+      );
+    }
+
+    return _GastoFijoCatalogos(
+      categorias: categorias,
+      miembros: miembros,
+    );
   }
 
-  void _retryCategorias() {
+  void _retryCatalogos() {
     setState(() {
-      _categoriasFuture = _loadCategorias();
+      _catalogosFuture = _loadCatalogos();
     });
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(_GastoFijoCatalogos catalogos) async {
     final formState = _formKey.currentState;
     if (formState == null || !formState.validate() || _isSaving) {
+      return;
+    }
+
+    final distribucion = _buildDistribucion(catalogos.miembros);
+    if (distribucion == null) {
       return;
     }
 
@@ -508,6 +573,11 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
           concepto: _conceptoController.text.trim(),
           valorEstimado: double.parse(_valorEstimadoController.text.trim()),
           diaVencimiento: int.parse(_diaVencimientoController.text.trim()),
+          tipoReparto: _selectedTipoReparto,
+          responsableId: _selectedTipoReparto == 2
+              ? _selectedResponsableId
+              : null,
+          distribucion: distribucion,
         ),
       );
 
@@ -582,12 +652,73 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
         : null;
   }
 
+  int? _validResponsableValue(List<MiembroEspacio> miembros) {
+    return miembros.any((miembro) => miembro.usuarioId == _selectedResponsableId)
+        ? _selectedResponsableId
+        : null;
+  }
+
+  String _formatPercentage(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toInt().toString();
+    }
+
+    return value.toStringAsFixed(2);
+  }
+
+  List<Map<String, Object>>? _buildDistribucion(List<MiembroEspacio> miembros) {
+    if (_selectedTipoReparto == 1) {
+      return [];
+    }
+
+    if (miembros.isEmpty) {
+      widget.onError('No hay miembros disponibles para configurar el reparto.');
+      return null;
+    }
+
+    if (_selectedTipoReparto == 2) {
+      if (_selectedResponsableId == null) {
+        widget.onError('Selecciona el responsable.');
+        return null;
+      }
+
+      return [];
+    }
+
+    final distribucion = <Map<String, Object>>[];
+    var total = 0.0;
+
+    for (final miembro in miembros) {
+      final text =
+          _porcentajeControllers[miembro.usuarioId]?.text.trim() ?? '';
+      final porcentaje = double.tryParse(text);
+
+      if (porcentaje == null || porcentaje <= 0 || porcentaje > 100) {
+        widget.onError('Cada porcentaje debe ser mayor a 0 y máximo 100.');
+        return null;
+      }
+
+      total += porcentaje;
+      distribucion.add({
+        'usuarioId': miembro.usuarioId,
+        'porcentaje': porcentaje,
+      });
+    }
+
+    if ((total - 100).abs() > 0.0001) {
+      widget.onError('La suma total debe ser exactamente 100%.');
+      return null;
+    }
+
+    return distribucion;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.gastoFijo == null ? 'Crear gasto fijo' : 'Editar gasto fijo'),
-      content: FutureBuilder<List<CategoriaIngreso>>(
-        future: _categoriasFuture,
+      content: FutureBuilder<_GastoFijoCatalogos>(
+        future: _catalogosFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const SizedBox(
@@ -601,12 +732,14 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
 
           if (snapshot.hasError) {
             return _ErrorState(
-              message: 'No se pudieron cargar las categorías.',
-              onRetry: _retryCategorias,
+              message: 'No se pudieron cargar los catálogos.',
+              onRetry: _retryCatalogos,
             );
           }
 
-          final categorias = snapshot.data ?? [];
+          final catalogos = snapshot.data!;
+          final categorias = catalogos.categorias;
+          final miembros = catalogos.miembros;
 
           return Form(
             key: _formKey,
@@ -672,6 +805,86 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
                     keyboardType: TextInputType.number,
                     validator: _validateDueDay,
                   ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: _selectedTipoReparto,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de reparto',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 1,
+                        child: Text('Regla del hogar'),
+                      ),
+                      DropdownMenuItem(
+                        value: 2,
+                        child: Text('Individual'),
+                      ),
+                      DropdownMenuItem(
+                        value: 3,
+                        child: Text('Personalizado'),
+                      ),
+                    ],
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _selectedTipoReparto = value;
+                            });
+                          },
+                  ),
+                  if (_selectedTipoReparto == 2) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: _validResponsableValue(miembros),
+                      decoration: const InputDecoration(
+                        labelText: 'Responsable',
+                      ),
+                      items: miembros
+                          .map(
+                            (miembro) => DropdownMenuItem(
+                              value: miembro.usuarioId,
+                              child: Text(miembro.nombre),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _isSaving
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _selectedResponsableId = value;
+                              });
+                            },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'El responsable es requerido';
+                        }
+
+                        return null;
+                      },
+                    ),
+                  ],
+                  if (_selectedTipoReparto == 3) ...[
+                    const SizedBox(height: 12),
+                    ...miembros.map(
+                      (miembro) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TextFormField(
+                          controller:
+                              _porcentajeControllers[miembro.usuarioId],
+                          enabled: !_isSaving,
+                          decoration: InputDecoration(
+                            labelText: '${miembro.nombre} (%)',
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -688,7 +901,12 @@ class _GastoFijoFormDialogState extends State<_GastoFijoFormDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          onPressed: _isSaving ? null : _submit,
+          onPressed: _isSaving
+              ? null
+              : () async {
+                  final catalogos = await _catalogosFuture;
+                  await _submit(catalogos);
+                },
           child: _isSaving
               ? const SizedBox.square(
                   dimension: 18,

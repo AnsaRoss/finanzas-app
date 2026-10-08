@@ -53,7 +53,7 @@ public class GastosFijosController : ControllerBase
             return Forbid();
         }
 
-        var gastos = await _context.GastosFijos
+        var gastosData = await _context.GastosFijos
             .Where(x =>
                 x.EspacioFinancieroId == espacioId &&
                 x.Activo)
@@ -69,9 +69,32 @@ public class GastosFijosController : ControllerBase
                 Categoria = x.Categoria != null
                     ? x.Categoria.Nombre
                     : null,
+                x.TipoReparto,
+                x.ResponsableId,
+                Responsable = x.Responsable != null
+                    ? x.Responsable.Nombre
+                    : null,
+                x.DistribucionPersonalizadaJson,
                 x.Activo
             })
             .ToListAsync();
+
+        var gastos = gastosData.Select(x => new
+        {
+            x.Id,
+            x.Concepto,
+            x.ValorEstimado,
+            x.DiaVencimiento,
+            x.CategoriaId,
+            x.Categoria,
+            x.TipoReparto,
+            x.ResponsableId,
+            x.Responsable,
+            Distribucion =
+                _gastoService.LeerDistribucionPersonalizada(
+                    x.DistribucionPersonalizadaJson),
+            x.Activo
+        });
 
         return Ok(gastos);
     }
@@ -131,13 +154,33 @@ public class GastosFijosController : ControllerBase
             }
         }
 
+        var validacionReparto =
+            await _gastoService.ValidarConfiguracionRepartoAsync(
+                request.EspacioFinancieroId,
+                request.TipoReparto,
+                request.ResponsableId,
+                request.Distribucion);
+
+        if (!validacionReparto.EsValido)
+        {
+            return BadRequest(validacionReparto.Error);
+        }
+
         var gasto = new GastoFijo
         {
             EspacioFinancieroId = request.EspacioFinancieroId,
             CategoriaId = request.CategoriaId,
             Concepto = request.Concepto.Trim(),
             ValorEstimado = request.ValorEstimado,
-            DiaVencimiento = request.DiaVencimiento
+            DiaVencimiento = request.DiaVencimiento,
+            TipoReparto = request.TipoReparto,
+            ResponsableId = request.TipoReparto == TipoRepartoGasto.Individual
+                ? request.ResponsableId
+                : null,
+            DistribucionPersonalizadaJson =
+                _gastoService.SerializarDistribucionPersonalizada(
+                    request.TipoReparto,
+                    request.Distribucion)
         };
 
         _context.GastosFijos.Add(gasto);
@@ -149,7 +192,12 @@ public class GastosFijosController : ControllerBase
             gasto.Concepto,
             gasto.ValorEstimado,
             gasto.DiaVencimiento,
-            gasto.CategoriaId
+            gasto.CategoriaId,
+            gasto.TipoReparto,
+            gasto.ResponsableId,
+            Distribucion =
+                _gastoService.LeerDistribucionPersonalizada(
+                    gasto.DistribucionPersonalizadaJson)
         });
     }
 
@@ -200,10 +248,30 @@ public class GastosFijosController : ControllerBase
             );
         }
 
+        var validacionReparto =
+            await _gastoService.ValidarConfiguracionRepartoAsync(
+                gasto.EspacioFinancieroId,
+                request.TipoReparto,
+                request.ResponsableId,
+                request.Distribucion);
+
+        if (!validacionReparto.EsValido)
+        {
+            return BadRequest(validacionReparto.Error);
+        }
+
         gasto.CategoriaId = request.CategoriaId;
         gasto.Concepto = request.Concepto.Trim();
         gasto.ValorEstimado = request.ValorEstimado;
         gasto.DiaVencimiento = request.DiaVencimiento;
+        gasto.TipoReparto = request.TipoReparto;
+        gasto.ResponsableId = request.TipoReparto == TipoRepartoGasto.Individual
+            ? request.ResponsableId
+            : null;
+        gasto.DistribucionPersonalizadaJson =
+            _gastoService.SerializarDistribucionPersonalizada(
+                request.TipoReparto,
+                request.Distribucion);
 
         await _context.SaveChangesAsync();
 
@@ -294,13 +362,10 @@ public class GastosFijosController : ControllerBase
                 x.Id == gastoFijo.EspacioFinancieroId);
 
         var distribucionResult =
-            await _gastoService.PrepararDistribucionAsync(
-                gastoFijo.EspacioFinancieroId,
+            await _gastoService.PrepararDistribucionGastoFijoAsync(
+                gastoFijo,
                 espacio.Tipo,
-                TipoRepartoGasto.ReglaHogar,
-                valor.Value,
-                responsableId: null,
-                Array.Empty<ReglaRepartoItemRequest>());
+                valor.Value);
 
         if (!distribucionResult.EsValido)
         {
@@ -317,6 +382,7 @@ public class GastosFijosController : ControllerBase
 
             Concepto = gastoFijo.Concepto,
             Tipo = TipoGasto.Fijo,
+            TipoReparto = gastoFijo.TipoReparto,
             Valor = valor.Value,
             Fecha = request.Fecha,
             Observacion = request.Observacion?.Trim()
@@ -349,6 +415,7 @@ public class GastosFijosController : ControllerBase
             gasto.Fecha,
             gasto.FechaPago,
             gasto.Estado,
+            gasto.TipoReparto,
             Distribucion = distribucion
         });
     }

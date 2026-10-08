@@ -351,11 +351,20 @@ namespace Finanzas.Api.Migrations
                     b.Property<byte?>("DiaVencimiento")
                         .HasColumnType("tinyint unsigned");
 
+                    b.Property<string>("DistribucionPersonalizadaJson")
+                        .HasColumnType("longtext");
+
                     b.Property<long>("EspacioFinancieroId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("ResponsableId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TipoReparto")
+                        .HasColumnType("int");
 
                     b.Property<decimal?>("ValorEstimado")
                         .HasPrecision(12, 2)
@@ -366,6 +375,8 @@ namespace Finanzas.Api.Migrations
                     b.HasIndex("CategoriaId");
 
                     b.HasIndex("EspacioFinancieroId");
+
+                    b.HasIndex("ResponsableId");
 
                     b.ToTable("GastosFijos");
                 });
@@ -663,9 +674,16 @@ namespace Finanzas.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Finanzas.Api.Models.Usuario", "Responsable")
+                        .WithMany()
+                        .HasForeignKey("ResponsableId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Categoria");
 
                     b.Navigation("EspacioFinanciero");
+
+                    b.Navigation("Responsable");
                 });
 
             modelBuilder.Entity("Finanzas.Api.Models.Ingreso", b =>

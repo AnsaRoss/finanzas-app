@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Finanzas.Api.Data;
 using Finanzas.Api.DTOs;
 using Finanzas.Api.Models;
@@ -12,6 +13,76 @@ public class GastoService
     public GastoService(AppDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<ValidacionRepartoResult>
+        ValidarConfiguracionRepartoAsync(
+            long espacioFinancieroId,
+            TipoRepartoGasto tipoReparto,
+            long? responsableId,
+            IReadOnlyCollection<ReglaRepartoItemRequest>? distribucion)
+    {
+        return tipoReparto switch
+        {
+            TipoRepartoGasto.ReglaHogar =>
+                ValidacionRepartoResult.Ok(),
+
+            TipoRepartoGasto.Individual =>
+                await ValidarResponsableAsync(
+                    espacioFinancieroId,
+                    responsableId),
+
+            TipoRepartoGasto.Personalizado =>
+                await ValidarDistribucionPersonalizadaAsync(
+                    espacioFinancieroId,
+                    distribucion),
+
+            _ => ValidacionRepartoResult.Fallo(
+                "El tipo de reparto no es válido.")
+        };
+    }
+
+    public async Task<DistribucionGastoResult>
+        PrepararDistribucionGastoFijoAsync(
+            GastoFijo gastoFijo,
+            TipoEspacio tipoEspacio,
+            decimal valor)
+    {
+        return await PrepararDistribucionAsync(
+            gastoFijo.EspacioFinancieroId,
+            tipoEspacio,
+            gastoFijo.TipoReparto,
+            valor,
+            gastoFijo.ResponsableId,
+            LeerDistribucionPersonalizada(
+                gastoFijo.DistribucionPersonalizadaJson));
+    }
+
+    public string? SerializarDistribucionPersonalizada(
+        TipoRepartoGasto tipoReparto,
+        IReadOnlyCollection<ReglaRepartoItemRequest>? distribucion)
+    {
+        if (tipoReparto != TipoRepartoGasto.Personalizado)
+        {
+            return null;
+        }
+
+        var items = distribucion ??
+            Array.Empty<ReglaRepartoItemRequest>();
+
+        return JsonSerializer.Serialize(items);
+    }
+
+    public IReadOnlyCollection<ReglaRepartoItemRequest>
+        LeerDistribucionPersonalizada(string? distribucionJson)
+    {
+        if (string.IsNullOrWhiteSpace(distribucionJson))
+        {
+            return [];
+        }
+
+        return JsonSerializer.Deserialize<List<ReglaRepartoItemRequest>>(
+            distribucionJson) ?? [];
     }
 
     public async Task<DistribucionGastoResult> PrepararDistribucionAsync(
@@ -98,15 +169,14 @@ public class GastoService
             );
         }
 
-        var responsablePertenece = await _context.EspaciosUsuarios
-            .AnyAsync(x =>
-                x.EspacioFinancieroId == espacioFinancieroId &&
-                x.UsuarioId == responsableId.Value);
+        var validacion = await ValidarResponsableAsync(
+            espacioFinancieroId,
+            responsableId);
 
-        if (!responsablePertenece)
+        if (!validacion.EsValido)
         {
             return DistribucionGastoResult.Fallo(
-                "El responsable debe pertenecer al espacio financiero."
+                validacion.Error!
             );
         }
 
@@ -133,18 +203,69 @@ public class GastoService
             );
         }
 
+        var validacion = await ValidarDistribucionPersonalizadaAsync(
+            espacioFinancieroId,
+            distribucion);
+
+        if (!validacion.EsValido)
+        {
+            return DistribucionGastoResult.Fallo(validacion.Error!);
+        }
+
+        return DistribucionGastoResult.Ok(
+            CrearDistribucionesPreparadas(valor, distribucion));
+    }
+
+    private async Task<ValidacionRepartoResult> ValidarResponsableAsync(
+        long espacioFinancieroId,
+        long? responsableId)
+    {
+        if (!responsableId.HasValue)
+        {
+            return ValidacionRepartoResult.Fallo(
+                "Debe indicar el responsable del gasto individual."
+            );
+        }
+
+        var responsablePertenece = await _context.EspaciosUsuarios
+            .AnyAsync(x =>
+                x.EspacioFinancieroId == espacioFinancieroId &&
+                x.UsuarioId == responsableId.Value);
+
+        if (!responsablePertenece)
+        {
+            return ValidacionRepartoResult.Fallo(
+                "El responsable debe pertenecer al espacio financiero."
+            );
+        }
+
+        return ValidacionRepartoResult.Ok();
+    }
+
+    private async Task<ValidacionRepartoResult>
+        ValidarDistribucionPersonalizadaAsync(
+            long espacioFinancieroId,
+            IReadOnlyCollection<ReglaRepartoItemRequest>? distribucion)
+    {
+        if (distribucion is null || distribucion.Count == 0)
+        {
+            return ValidacionRepartoResult.Fallo(
+                "Debe ingresar al menos una distribución."
+            );
+        }
+
         if (distribucion
             .GroupBy(x => x.UsuarioId)
             .Any(x => x.Count() > 1))
         {
-            return DistribucionGastoResult.Fallo(
+            return ValidacionRepartoResult.Fallo(
                 "No puede repetir un usuario en la distribución."
             );
         }
 
         if (distribucion.Any(x => x.Porcentaje <= 0))
         {
-            return DistribucionGastoResult.Fallo(
+            return ValidacionRepartoResult.Fallo(
                 "Cada porcentaje debe ser mayor a 0."
             );
         }
@@ -153,7 +274,7 @@ public class GastoService
 
         if (total != 100m)
         {
-            return DistribucionGastoResult.Fallo(
+            return ValidacionRepartoResult.Fallo(
                 $"Los porcentajes deben sumar 100%. Actualmente suman {total}%."
             );
         }
@@ -171,13 +292,12 @@ public class GastoService
 
         if (miembrosValidos.Count != usuariosIds.Count)
         {
-            return DistribucionGastoResult.Fallo(
+            return ValidacionRepartoResult.Fallo(
                 "Todos los usuarios deben pertenecer al espacio financiero."
             );
         }
 
-        return DistribucionGastoResult.Ok(
-            CrearDistribucionesPreparadas(valor, distribucion));
+        return ValidacionRepartoResult.Ok();
     }
 
     private static IReadOnlyCollection<DistribucionGastoPreparada>
@@ -330,3 +450,22 @@ public record DistribucionGastoPreparada(
     long UsuarioId,
     decimal Porcentaje,
     decimal Valor);
+
+public class ValidacionRepartoResult
+{
+    private ValidacionRepartoResult(bool esValido, string? error)
+    {
+        EsValido = esValido;
+        Error = error;
+    }
+
+    public bool EsValido { get; }
+
+    public string? Error { get; }
+
+    public static ValidacionRepartoResult Ok() =>
+        new(true, null);
+
+    public static ValidacionRepartoResult Fallo(string error) =>
+        new(false, error);
+}

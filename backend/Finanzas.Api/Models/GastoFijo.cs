@@ -15,6 +15,10 @@ public class GastoFijo
 
     public Categoria? Categoria { get; set; }
 
+    public long? ResponsableId { get; set; }
+
+    public Usuario? Responsable { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string Concepto { get; set; } = string.Empty;
@@ -23,6 +27,11 @@ public class GastoFijo
     public decimal? ValorEstimado { get; set; }
 
     public byte? DiaVencimiento { get; set; }
+
+    public TipoRepartoGasto TipoReparto { get; set; } =
+        TipoRepartoGasto.ReglaHogar;
+
+    public string? DistribucionPersonalizadaJson { get; set; }
 
     public bool Activo { get; set; } = true;
 

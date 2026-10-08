@@ -58,6 +58,9 @@ class GastosFijosService {
     required String concepto,
     required double valorEstimado,
     required int diaVencimiento,
+    required int tipoReparto,
+    required int? responsableId,
+    required List<Map<String, Object>> distribucion,
   }) async {
     final headers = await _getAuthHeaders();
     final httpClient = client ?? http.Client();
@@ -72,6 +75,9 @@ class GastosFijosService {
           'concepto': concepto,
           'valorEstimado': valorEstimado,
           'diaVencimiento': diaVencimiento,
+          'tipoReparto': tipoReparto,
+          'responsableId': responsableId,
+          'distribucion': distribucion,
         }),
       );
 
@@ -92,6 +98,9 @@ class GastosFijosService {
     required String concepto,
     required double valorEstimado,
     required int diaVencimiento,
+    required int tipoReparto,
+    required int? responsableId,
+    required List<Map<String, Object>> distribucion,
   }) async {
     final headers = await _getAuthHeaders();
     final httpClient = client ?? http.Client();
@@ -106,6 +115,9 @@ class GastosFijosService {
           'concepto': concepto,
           'valorEstimado': valorEstimado,
           'diaVencimiento': diaVencimiento,
+          'tipoReparto': tipoReparto,
+          'responsableId': responsableId,
+          'distribucion': distribucion,
         }),
       );
 

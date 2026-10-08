@@ -76,6 +76,12 @@ public class AppDbContext : DbContext
             .Property(x => x.ValorEstimado)
             .HasPrecision(12, 2);
 
+        modelBuilder.Entity<GastoFijo>()
+            .HasOne(x => x.Responsable)
+            .WithMany()
+            .HasForeignKey(x => x.ResponsableId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         
         modelBuilder.Entity<Gasto>()
             .Property(x => x.Valor)
