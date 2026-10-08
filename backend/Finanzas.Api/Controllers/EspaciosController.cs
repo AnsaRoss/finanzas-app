@@ -163,4 +163,49 @@ public class EspaciosController : ControllerBase
             usuario.Email
         });
     }
+
+    [HttpGet("{id:long}/miembros")]
+    public async Task<IActionResult> GetMiembros(long id)
+    {
+        var usuarioId = GetUsuarioId();
+
+        var pertenece = await _context.EspaciosUsuarios
+            .AnyAsync(x =>
+                x.EspacioFinancieroId == id &&
+                x.UsuarioId == usuarioId);
+
+        if (!pertenece)
+        {
+            return Forbid();
+        }
+
+        var espacio = await _context.EspaciosFinancieros
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (espacio is null)
+        {
+            return NotFound("Espacio no encontrado.");
+        }
+
+        if (espacio.Tipo != TipoEspacio.Hogar)
+        {
+            return BadRequest(
+                "Los miembros solo aplican a espacios de tipo Hogar."
+            );
+        }
+
+        var miembros = await _context.EspaciosUsuarios
+            .Where(x => x.EspacioFinancieroId == id)
+            .OrderBy(x => x.Usuario.Nombre)
+            .Select(x => new
+            {
+                usuarioId = x.UsuarioId,
+                nombre = x.Usuario.Nombre,
+                email = x.Usuario.Email,
+                rol = x.Rol
+            })
+            .ToListAsync();
+
+        return Ok(miembros);
+    }
 }

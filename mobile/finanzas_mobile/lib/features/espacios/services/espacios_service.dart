@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:finanzas_mobile/core/config/api_config.dart';
 import 'package:finanzas_mobile/features/auth/services/session_service.dart';
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
+import 'package:finanzas_mobile/features/espacios/models/miembro_espacio.dart';
 import 'package:http/http.dart' as http;
 
 class EspaciosException implements Exception {
@@ -107,6 +108,45 @@ class EspaciosService {
         response,
         'No se pudo agregar el miembro.',
       );
+    } on http.ClientException {
+      throw const EspaciosException(
+        'No se pudo conectar con el servidor.',
+      );
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
+  }
+
+  Future<List<MiembroEspacio>> listarMiembros(int espacioId) async {
+    final headers = await _getAuthHeaders();
+    final httpClient = client ?? http.Client();
+
+    try {
+      final response = await httpClient.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/Espacios/$espacioId/miembros'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as List<dynamic>;
+
+        return json
+            .map((item) => MiembroEspacio.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+
+      _ensureSuccess(
+        response,
+        'No se pudieron cargar los miembros del hogar.',
+      );
+
+      throw const EspaciosException(
+        'No se pudieron cargar los miembros del hogar.',
+      );
+    } on FormatException {
+      throw const EspaciosException('La respuesta de miembros no es válida.');
     } on http.ClientException {
       throw const EspaciosException(
         'No se pudo conectar con el servidor.',

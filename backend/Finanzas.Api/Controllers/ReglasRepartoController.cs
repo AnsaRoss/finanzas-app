@@ -102,7 +102,8 @@ public class ReglasRepartoController : ControllerBase
             );
         }
 
-        if (request.Distribuciones.Count == 0)
+        if (request.Distribuciones is null ||
+            request.Distribuciones.Count == 0)
         {
             return BadRequest(
                 "Debe ingresar al menos una distribución."

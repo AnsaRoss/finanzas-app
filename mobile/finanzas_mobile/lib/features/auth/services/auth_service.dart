@@ -56,4 +56,45 @@ class AuthService {
       }
     }
   }
+
+  Future<LoginResponse> register({
+    required String nombre,
+    required String email,
+    required String password,
+  }) async {
+    final httpClient = client ?? http.Client();
+
+    try {
+      final response = await httpClient.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/Auth/register'),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return LoginResponse.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+
+      final responseMessage = response.body.trim();
+      if (responseMessage.isNotEmpty) {
+        throw AuthException(responseMessage);
+      }
+
+      throw const AuthException('No se pudo crear la cuenta.');
+    } on FormatException {
+      throw const AuthException('La respuesta del registro no es válida.');
+    } on http.ClientException {
+      throw const AuthException('No se pudo conectar con el servidor.');
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
+  }
 }

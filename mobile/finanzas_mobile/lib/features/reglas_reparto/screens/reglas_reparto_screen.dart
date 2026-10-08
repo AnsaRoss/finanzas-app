@@ -1,4 +1,6 @@
 import 'package:finanzas_mobile/features/espacios/models/espacio_financiero.dart';
+import 'package:finanzas_mobile/features/espacios/models/miembro_espacio.dart';
+import 'package:finanzas_mobile/features/espacios/services/espacios_service.dart';
 import 'package:finanzas_mobile/features/reglas_reparto/models/regla_reparto.dart';
 import 'package:finanzas_mobile/features/reglas_reparto/services/reglas_reparto_service.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +19,8 @@ class ReglasRepartoScreen extends StatefulWidget {
 
 class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
   final _reglasService = const ReglasRepartoService();
-  late Future<List<ReglaReparto>> _reglasFuture;
+  final _espaciosService = const EspaciosService();
+  late Future<_ReglasRepartoData> _reglasFuture;
   final Map<int, TextEditingController> _porcentajeControllers = {};
   bool _isSaving = false;
 
@@ -35,18 +38,26 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
     super.dispose();
   }
 
-  Future<List<ReglaReparto>> _loadReglas() async {
+  Future<_ReglasRepartoData> _loadReglas() async {
+    final miembros = await _espaciosService.listarMiembros(widget.espacio.id);
     final reglas = await _reglasService.listarPorEspacio(widget.espacio.id);
+    final reglasPorUsuario = {
+      for (final regla in reglas) regla.usuarioId: regla,
+    };
 
-    for (final regla in reglas) {
+    for (final miembro in miembros) {
+      final porcentaje = reglasPorUsuario[miembro.usuarioId]?.porcentaje ?? 0;
       final controller = _porcentajeControllers.putIfAbsent(
-        regla.usuarioId,
+        miembro.usuarioId,
         () => TextEditingController(),
       );
-      controller.text = _formatPercentage(regla.porcentaje);
+      controller.text = _formatPercentage(porcentaje);
     }
 
-    return reglas;
+    return _ReglasRepartoData(
+      miembros: miembros,
+      reglas: reglas,
+    );
   }
 
   void _refreshReglas() {
@@ -69,12 +80,12 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
     return value.toStringAsFixed(2);
   }
 
-  Future<void> _guardar(List<ReglaReparto> reglas) async {
+  Future<void> _guardar(List<MiembroEspacio> miembros) async {
     if (_isSaving) {
       return;
     }
 
-    if (reglas.isEmpty) {
+    if (miembros.isEmpty) {
       _showMessage('No existen miembros para configurar.');
       return;
     }
@@ -82,19 +93,20 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
     final distribuciones = <ReglaRepartoUpdate>[];
     var total = 0.0;
 
-    for (final regla in reglas) {
-      final text = _porcentajeControllers[regla.usuarioId]?.text.trim() ?? '';
+    for (final miembro in miembros) {
+      final text =
+          _porcentajeControllers[miembro.usuarioId]?.text.trim() ?? '';
       final porcentaje = double.tryParse(text);
 
-      if (porcentaje == null || porcentaje < 0 || porcentaje > 100) {
-        _showMessage('Cada porcentaje debe estar entre 0 y 100.');
+      if (porcentaje == null || porcentaje <= 0 || porcentaje > 100) {
+        _showMessage('Cada porcentaje debe ser mayor a 0 y máximo 100.');
         return;
       }
 
       total += porcentaje;
       distribuciones.add(
         ReglaRepartoUpdate(
-          usuarioId: regla.usuarioId,
+          usuarioId: miembro.usuarioId,
           porcentaje: porcentaje,
         ),
       );
@@ -176,7 +188,7 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  FutureBuilder<List<ReglaReparto>>(
+                  FutureBuilder<_ReglasRepartoData>(
                     future: _reglasFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
@@ -196,8 +208,10 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                         );
                       }
 
-                      final reglas = snapshot.data ?? [];
-                      if (reglas.isEmpty) {
+                      final data = snapshot.data;
+                      final miembros = data?.miembros ?? [];
+                      final reglas = data?.reglas ?? [];
+                      if (miembros.isEmpty) {
                         return Text(
                           'No existen miembros para configurar.',
                           style: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -207,8 +221,33 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          ...reglas.map(
-                            (regla) => Card(
+                          Text(
+                            'Miembros del hogar',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...miembros.map(
+                            (miembro) => Card(
+                              child: ListTile(
+                                title: Text(miembro.nombre),
+                                subtitle: Text(miembro.email),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            reglas.isEmpty
+                                ? 'Configura los porcentajes iniciales'
+                                : 'Porcentajes configurados',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...miembros.map(
+                            (miembro) => Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -216,7 +255,7 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     Text(
-                                      regla.usuario,
+                                      miembro.nombre,
                                       style:
                                           theme.textTheme.titleMedium?.copyWith(
                                         fontWeight: FontWeight.w700,
@@ -225,7 +264,7 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                                     const SizedBox(height: 12),
                                     TextFormField(
                                       controller: _porcentajeControllers[
-                                          regla.usuarioId],
+                                          miembro.usuarioId],
                                       enabled: !_isSaving,
                                       decoration: const InputDecoration(
                                         labelText: 'Porcentaje',
@@ -243,7 +282,7 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
                             alignment: Alignment.centerRight,
                             child: FilledButton(
                               onPressed:
-                                  _isSaving ? null : () => _guardar(reglas),
+                                  _isSaving ? null : () => _guardar(miembros),
                               child: _isSaving
                                   ? const SizedBox.square(
                                       dimension: 18,
@@ -266,6 +305,16 @@ class _ReglasRepartoScreenState extends State<ReglasRepartoScreen> {
       ),
     );
   }
+}
+
+class _ReglasRepartoData {
+  const _ReglasRepartoData({
+    required this.miembros,
+    required this.reglas,
+  });
+
+  final List<MiembroEspacio> miembros;
+  final List<ReglaReparto> reglas;
 }
 
 class _ErrorState extends StatelessWidget {

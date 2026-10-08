@@ -1,6 +1,7 @@
 import 'package:finanzas_mobile/features/auth/models/login_response.dart';
 import 'package:finanzas_mobile/features/auth/services/auth_service.dart';
 import 'package:finanzas_mobile/features/auth/services/session_service.dart';
+import 'package:finanzas_mobile/features/auth/screens/register_screen.dart';
 import 'package:finanzas_mobile/features/home/screens/home_screen.dart';
 import 'package:finanzas_mobile/shared/widgets/app_text_form_field.dart';
 import 'package:flutter/material.dart';
@@ -226,10 +227,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : const Text('Iniciar sesión'),
                             ),
                             const SizedBox(height: 16),
-                            TextButton(
-                              onPressed: _isLoading ? null : () {},
-                              child: const Text('Crear cuenta'),
-                            ),
+                    TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen(),
+                                ),
+                              );
+                            },
+                      child: const Text('Crear cuenta'),
+                    ),
                           ],
                         ),
                       ),
